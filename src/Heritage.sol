@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 contract Inheritance {
     struct InheritanceInfo {
@@ -11,13 +11,13 @@ contract Inheritance {
         bool isSet;
     }
 
-    IERC20 public token;
+    ERC20 public token;
     mapping(address => InheritanceInfo) public inheritances;
 
     event HeirSet(address indexed owner, address indexed heir, uint256 amount);
     event InheritanceClaimed(address indexed heir, address indexed owner, uint256 amount);
 
-    constructor(IERC20 _token) {
+    constructor(ERC20 _token) {
         token = _token;
     }
 
@@ -25,6 +25,8 @@ contract Inheritance {
         require(!inheritances[msg.sender].isSet, "Heir is already set for this owner");
         require(_heir != address(0), "Invalid heir address");
         require(_amount > 0, "Amount must be greater than zero");
+
+        token.approve(address(this), _amount);
 
         inheritances[msg.sender] = InheritanceInfo({
             heir: _heir,
@@ -37,17 +39,17 @@ contract Inheritance {
     }
 
     function claimInheritance(address _owner, uint256 _amount) external {
-        address _heir = msg.sender;
         InheritanceInfo storage inheritance = inheritances[_owner];
         
         require(inheritance.isSet, "Heir is not set for this owner");
-        require(_heir == inheritance.heir, "Only the designated heir can withdraw");
+        require(msg.sender == inheritance.heir, "Only the designated heir can withdraw");
         require(inheritance.amount >= _amount, "Insufficient inheritance amount");
+        require(token.balanceOf(_owner) >= _amount, "Insufficient balance");
+
+        token.transferFrom(_owner, msg.sender, _amount);
 
         inheritance.amount -= _amount;
 
-        token.transfer(_owner, _heir, _amount);
-
-        emit InheritanceClaimed(_heir, _owner, _amount);
+        emit InheritanceClaimed(msg.sender, _owner, _amount);
     }
 }
