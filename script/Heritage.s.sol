@@ -29,7 +29,10 @@ contract HeritageDeploymentScript is Script {
      * Deploys a new ERC20 token and the Heritage contract. Approves the Heritage contract to spend tokens on behalf of the deployer.
      */
     function setUp() public {
-        vm.startBroadcast();
+
+        uint256 privateKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
+
+        vm.startBroadcast(privateKey);
         // Deploy a new ERC20 token named "Test" with symbol "TT" and an initial supply of 100 tokens.
         token = new Token("Test", "TT", 100);
         console.log("Token contract deployed to:", address(token));
@@ -39,7 +42,7 @@ contract HeritageDeploymentScript is Script {
         console.log("Inheritance contract deployed to:", address(inheritance));
 
         // Approve the Heritage contract to spend 50 tokens on behalf of the deployer.
-        token.approve(address(inheritance), 50);
+        token.approve(address(inheritance), 50 *(10**18));
     }
 
     /**
@@ -52,7 +55,8 @@ contract HeritageDeploymentScript is Script {
         heir = 0x538D8F0c878ff754cbc08D80DdAdF08BF7f6bEC7; // Predefined heir address
 
         // Set the heir for the owner and specify an inheritance amount.
-        setHeir(heir, 50);
+        _setHeir(heir, 50*(10**18));
+        console.log("setHeir yapildi");
         // Check the initial balances of the owner and heir.
         checkBalance(owner);
         checkBalance(heir);
@@ -61,18 +65,17 @@ contract HeritageDeploymentScript is Script {
 
         // Retrieve a private key from the environment variables to simulate another account.
         uint256 privateKey = vm.envUint("CONTINUOUS_PRIVATE_KEY");
-        address newSender = vm.addr(privateKey); // Derive an address from the private key.
 
-        // Impersonate another account using Foundry's VM functionality.
-        vm.prank(newSender);
-
+        vm.startBroadcast(privateKey);
         // Attempt to claim inheritance as the heir.
-        claim(owner, 50);
+        claim(owner, 50*(10**18));
+        console.log("Claim yapildi");
+
         // Check balances after claiming inheritance.
         checkBalance(owner);
         checkBalance(heir);
 
-        vm.stopPrank(); // Stop impersonating the account.
+        vm.stopBroadcast(); // Stop impersonating the account.
     }
 
     /**
@@ -80,7 +83,7 @@ contract HeritageDeploymentScript is Script {
      * @param _heir Address of the heir to be set.
      * @param _amount Amount of tokens to be inherited.
      */
-    function setHeir(address _heir, uint256 _amount) private {
+    function _setHeir(address _heir, uint256 _amount) private {
         inheritance.setHeir(_heir, _amount);
     }
 
